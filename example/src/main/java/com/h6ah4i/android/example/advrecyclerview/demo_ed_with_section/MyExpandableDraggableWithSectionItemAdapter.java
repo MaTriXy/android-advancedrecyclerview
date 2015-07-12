@@ -20,18 +20,24 @@ import android.support.v4.view.ViewCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import com.h6ah4i.android.example.advrecyclerview.R;
+import com.h6ah4i.android.example.advrecyclerview.common.compat.MorphButtonCompat;
 import com.h6ah4i.android.example.advrecyclerview.common.data.AbstractExpandableDataProvider;
+import com.h6ah4i.android.example.advrecyclerview.common.utils.DrawableUtils;
 import com.h6ah4i.android.example.advrecyclerview.common.utils.ViewUtils;
 import com.h6ah4i.android.widget.advrecyclerview.draggable.ItemDraggableRange;
 import com.h6ah4i.android.widget.advrecyclerview.draggable.RecyclerViewDragDropManager;
+import com.h6ah4i.android.widget.advrecyclerview.expandable.ChildPositionItemDraggableRange;
 import com.h6ah4i.android.widget.advrecyclerview.expandable.ExpandableDraggableItemAdapter;
 import com.h6ah4i.android.widget.advrecyclerview.expandable.ExpandableItemViewHolder;
+import com.h6ah4i.android.widget.advrecyclerview.expandable.GroupPositionItemDraggableRange;
 import com.h6ah4i.android.widget.advrecyclerview.expandable.RecyclerViewExpandableItemManager;
 import com.h6ah4i.android.widget.advrecyclerview.utils.AbstractDraggableItemViewHolder;
 import com.h6ah4i.android.widget.advrecyclerview.utils.AbstractExpandableItemAdapter;
+import com.wnafee.vector.MorphButton;
 
 public class MyExpandableDraggableWithSectionItemAdapter
         extends AbstractExpandableItemAdapter<MyExpandableDraggableWithSectionItemAdapter.MyGroupViewHolder, MyExpandableDraggableWithSectionItemAdapter.MyChildViewHolder>
@@ -44,14 +50,14 @@ public class MyExpandableDraggableWithSectionItemAdapter
     private AbstractExpandableDataProvider mProvider;
 
     public static abstract class MyBaseViewHolder extends AbstractDraggableItemViewHolder implements ExpandableItemViewHolder {
-        public ViewGroup mContainer;
+        public FrameLayout mContainer;
         public View mDragHandle;
         public TextView mTextView;
         private int mExpandStateFlags;
 
         public MyBaseViewHolder(View v) {
             super(v);
-            mContainer = (ViewGroup) v.findViewById(R.id.container);
+            mContainer = (FrameLayout) v.findViewById(R.id.container);
             mDragHandle = v.findViewById(R.id.drag_handle);
             mTextView = (TextView) v.findViewById(android.R.id.text1);
         }
@@ -68,8 +74,11 @@ public class MyExpandableDraggableWithSectionItemAdapter
     }
 
     public static class MyGroupViewHolder extends MyBaseViewHolder {
+        public MorphButtonCompat mMorphButton;
+
         public MyGroupViewHolder(View v) {
             super(v);
+            mMorphButton = new MorphButtonCompat(v.findViewById(R.id.indicator));
         }
     }
 
@@ -183,9 +192,13 @@ public class MyExpandableDraggableWithSectionItemAdapter
         if (((dragState & RecyclerViewDragDropManager.STATE_FLAG_IS_UPDATED) != 0) ||
                 ((expandState & RecyclerViewExpandableItemManager.STATE_FLAG_IS_UPDATED) != 0)) {
             int bgResId;
+            MorphButton.MorphState indicatorState;
 
             if ((dragState & RecyclerViewDragDropManager.STATE_FLAG_IS_ACTIVE) != 0) {
                 bgResId = R.drawable.bg_group_item_dragging_active_state;
+
+                // need to clear drawable state here to get correct appearance of the dragging item.
+                DrawableUtils.clearState(holder.mContainer.getForeground());
             } else if (((dragState & RecyclerViewDragDropManager.STATE_FLAG_DRAGGING) != 0) &&
                     ((dragState & RecyclerViewDragDropManager.STATE_FLAG_IS_IN_RANGE) != 0)) {
                 bgResId = R.drawable.bg_group_item_dragging_state;
@@ -195,7 +208,17 @@ public class MyExpandableDraggableWithSectionItemAdapter
                 bgResId = R.drawable.bg_group_item_normal_state;
             }
 
+            if ((expandState & RecyclerViewExpandableItemManager.STATE_FLAG_IS_EXPANDED) != 0) {
+                indicatorState = MorphButton.MorphState.END;
+            } else {
+                indicatorState = MorphButton.MorphState.START;
+            }
+
             holder.mContainer.setBackgroundResource(bgResId);
+
+            if (holder.mMorphButton.getState() != indicatorState) {
+                holder.mMorphButton.setState(indicatorState, true);
+            }
         }
     }
 
@@ -214,6 +237,9 @@ public class MyExpandableDraggableWithSectionItemAdapter
 
             if ((dragState & RecyclerViewDragDropManager.STATE_FLAG_IS_ACTIVE) != 0) {
                 bgResId = R.drawable.bg_item_dragging_active_state;
+
+                // need to clear drawable state here to get correct appearance of the dragging item.
+                DrawableUtils.clearState(holder.mContainer.getForeground());
             } else if (((dragState & RecyclerViewDragDropManager.STATE_FLAG_DRAGGING) != 0) &&
                     ((dragState & RecyclerViewDragDropManager.STATE_FLAG_IS_IN_RANGE) != 0)) {
                 bgResId = R.drawable.bg_item_dragging_state;
@@ -281,19 +307,25 @@ public class MyExpandableDraggableWithSectionItemAdapter
         final int start = findFirstSectionItem(groupPosition);
         final int end = findLastSectionItem(groupPosition);
 
-        return new ItemDraggableRange(start, end);
+        return new GroupPositionItemDraggableRange(start, end);
     }
 
     @Override
     public ItemDraggableRange onGetChildItemDraggableRange(MyChildViewHolder holder, int groupPosition, int childPosition) {
         // sort within the same group
-        return new ItemDraggableRange(groupPosition, groupPosition);
+        return new GroupPositionItemDraggableRange(groupPosition, groupPosition);
 
 //        // sort within the same section
 //        final int start = findFirstSectionItem(groupPosition);
 //        final int end = findLastSectionItem(groupPosition);
 //
-//        return new ItemDraggableRange(start, end);
+//        return new GroupPositionItemDraggableRange(start, end);
+
+//        // sort within the specified child range
+//        final int start = 0;
+//        final int end = 2;
+//
+//        return new ChildPositionItemDraggableRange(start, end);
     }
 
     @Override

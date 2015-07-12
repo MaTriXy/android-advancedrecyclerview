@@ -16,7 +16,10 @@
 -->
 <manifest
     package="com.h6ah4i.android.example.advrecyclerview"
-    xmlns:android="http://schemas.android.com/apk/res/android">
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-sdk tools:overrideLibrary="com.wnafee.vector"/>
 
     <application
         android:allowBackup="true"
@@ -38,8 +41,16 @@
             android:label="@string/activity_title_demo_d" />
 
         <activity
+            android:name=".demo_d_with_longpress.DraggableWithLongPressExampleActivity"
+            android:label="@string/activity_title_demo_d_with_longpress" />
+
+        <activity
             android:name=".demo_s.SwipeableExampleActivity"
             android:label="@string/activity_title_demo_s" />
+
+        <activity
+            android:name=".demo_us.UnderSwipeableExampleActivity"
+            android:label="@string/activity_title_demo_us" />
 
         <activity
             android:name=".demo_e.ExpandableExampleActivity"
