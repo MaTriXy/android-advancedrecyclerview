@@ -1,3 +1,63 @@
+## 0.9.2
+[New features]
+- Added `void RecyclerViewDragDropManager.setItemMoveMode(@ItemMoveMode int mode)` (issue #253, #269)
+- Added `void RecyclerViewSwipeManager.setSwipeThresholdDistance(int distanceInPixels)` (issue #266)
+- Added `notifyGroupItemMoved()` and `notifyChildItemMoved()` methods to `RecyclerViewExpandableItemManager` (issue #270)
+- Added `RecyclerViewDragDropManager.setInitiateOnTouch(boolean initiateOnTouch)` (issue #273)
+
+[Improvements]
+- Better handling of `notifyItem*` method calls during swiping (issue #274)
+- Improved span size change handling during dragging (issue #278)
+
+[Bug fixes]
+- IllegalStateException (issue #247)
+- Item loses Remove Animation properties when removed + undo (issue #262)
+
+
+## 0.9.1
+[Bug fixes]
+- Fix broken drag and drop behavior on API level 10
+
+
+## 0.9.0
+[New features]
+- Introduced `DraggableItemAdapter.onCheckCanDrop()` callback (issue #233)
+
+[Improvements]
+- Improved Drag & Drop behavior for StaggeredGridLayout (issue #219)
+- Updated support library to v23.3.0
+
+[Breaking changes]
+- Removed deprecated classes/methods/fields marked as @Deprecated in v0.8.x
+- Removed Legacy* swipable feature related classes
+
+
+## 0.8.7
+[New features]
+- Added onItemDragMoveDistanceUpdated() callback to OnItemDragEventListener (#191)
+- Added "minimal" draggable/swipeable/expandable examples
+- Updated support library to v23.2.1
+
+[Bug fixes]
+- Fixed drag & drop behavior of GridLayoutManager (related to #193)
+
+
+## 0.8.6
+[New features]
+- Added these methods to RecyclerViewExpandableItemManager (issue #161)
+  - getExpandedGroupsCount()
+  - getCollapsedGroupsCount()
+  - isAllGroupsExpanded()
+  - isAllGroupsCollapsed()
+
+[Bug fixes]
+- Fixed issue #158, #173, #176 (NullPointerException bug)
+- Fixed issue #173 (crash bugs bug)
+- Fixed issue #163 (Dragging with only 2 items in list lags significantly more than if it had more than 2 items.. bug)
+- Fixed issue #153 (Bug:happens as the user dragging,and the item root view's margin is set bug)
+- Fixed issue #152 (bug:Samsung S3 4.1.1(genymotion) with swipe left bug)
+
+
 ## 0.8.5
 - Updated support library to v23.1.1
 - Fixed issue #145 (SwipeableItemWrapperAdapter.onViewRecycled crash bug)
