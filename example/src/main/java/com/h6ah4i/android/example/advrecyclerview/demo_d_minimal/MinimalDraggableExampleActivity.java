@@ -47,7 +47,7 @@ public class MinimalDraggableExampleActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_demo_minimal);
 
-        RecyclerView recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
+        RecyclerView recyclerView = findViewById(R.id.recycler_view);
 
         // Setup D&D feature and RecyclerView
         RecyclerViewDragDropManager dragMgr = new RecyclerViewDragDropManager();
@@ -78,7 +78,7 @@ public class MinimalDraggableExampleActivity extends AppCompatActivity {
 
         public MyViewHolder(View itemView) {
             super(itemView);
-            textView = (TextView) itemView.findViewById(android.R.id.text1);
+            textView = itemView.findViewById(android.R.id.text1);
         }
     }
 
@@ -101,7 +101,7 @@ public class MinimalDraggableExampleActivity extends AppCompatActivity {
 
         @Override
         public MyViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.list_item_for_drag_minimal, parent, false);
+            View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.list_item_minimal, parent, false);
             return new MyViewHolder(v);
         }
 
@@ -120,7 +120,6 @@ public class MinimalDraggableExampleActivity extends AppCompatActivity {
         public void onMoveItem(int fromPosition, int toPosition) {
             MyItem movedItem = mItems.remove(fromPosition);
             mItems.add(toPosition, movedItem);
-            notifyItemMoved(fromPosition, toPosition);
         }
 
         @Override
@@ -136,6 +135,14 @@ public class MinimalDraggableExampleActivity extends AppCompatActivity {
         @Override
         public boolean onCheckCanDrop(int draggingPosition, int dropPosition) {
             return true;
+        }
+
+        @Override
+        public void onItemDragStarted(int position) {
+        }
+
+        @Override
+        public void onItemDragFinished(int fromPosition, int toPosition, boolean result) {
         }
     }
 }

@@ -48,8 +48,8 @@ class AlreadyExpandedGroupsExpandableExampleAdapter
 
         public MyBaseViewHolder(View v) {
             super(v);
-            mContainer = (FrameLayout) v.findViewById(R.id.container);
-            mTextView = (TextView) v.findViewById(android.R.id.text1);
+            mContainer = v.findViewById(R.id.container);
+            mTextView = v.findViewById(android.R.id.text1);
         }
     }
 
@@ -58,7 +58,7 @@ class AlreadyExpandedGroupsExpandableExampleAdapter
 
         public MyGroupViewHolder(View v) {
             super(v);
-            mIndicator = (ExpandableItemIndicator) v.findViewById(R.id.indicator);
+            mIndicator = v.findViewById(R.id.indicator);
         }
     }
 
@@ -175,11 +175,15 @@ class AlreadyExpandedGroupsExpandableExampleAdapter
     @Override
     public boolean onCheckCanExpandOrCollapseGroup(MyGroupViewHolder holder, int groupPosition, int x, int y, boolean expand) {
         // check is enabled
-        if (!(holder.itemView.isEnabled() && holder.itemView.isClickable())) {
-            return false;
-        }
+        return holder.itemView.isEnabled() && holder.itemView.isClickable();
+    }
 
-        return true;
+    @Override
+    public boolean getInitialGroupExpandedState(int groupPosition) {
+        // NOTE:
+        // This method can also be used to control initial state of group items.
+        // Make sure to call `setDefaultGroupsExpandedState(false)` to take effect.
+        return false;
     }
 
     // NOTE: This method is called from Fragment
@@ -195,7 +199,7 @@ class AlreadyExpandedGroupsExpandableExampleAdapter
             }
         }
 
-        mExpandableItemManager.notifyGroupItemRangeInserted(groupPosition, groupCount, true);
+        mExpandableItemManager.notifyGroupItemRangeInserted(groupPosition, groupCount);
     }
 
     // NOTE: This method is called from Fragment

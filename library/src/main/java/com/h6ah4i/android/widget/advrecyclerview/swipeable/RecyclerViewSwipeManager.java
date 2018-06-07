@@ -17,13 +17,11 @@
 package com.h6ah4i.android.widget.advrecyclerview.swipeable;
 
 import android.graphics.Rect;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
+import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.v4.view.MotionEventCompat;
-import android.support.v4.view.ViewCompat;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -31,6 +29,7 @@ import android.view.VelocityTracker;
 import android.view.View;
 import android.view.ViewConfiguration;
 
+import com.h6ah4i.android.widget.advrecyclerview.adapter.ItemIdComposer;
 import com.h6ah4i.android.widget.advrecyclerview.animator.SwipeDismissItemAnimator;
 import com.h6ah4i.android.widget.advrecyclerview.swipeable.action.SwipeResultAction;
 import com.h6ah4i.android.widget.advrecyclerview.swipeable.action.SwipeResultActionDefault;
@@ -77,6 +76,7 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
     private RecyclerView mRecyclerView;
 
     private long mReturnToDefaultPositionAnimationDuration = 300;
+    private long mMoveToSpecifiedPositionAnimationDuration = 200;
     private long mMoveToOutsideWindowAnimationDuration = 200;
 
     private int mTouchSlop;
@@ -89,7 +89,7 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
     private boolean mSwipeHorizontal;
 
     private ItemSlidingAnimator mItemSlideAnimator;
-    private SwipeableItemWrapperAdapter<RecyclerView.ViewHolder> mAdapter;
+    private SwipeableItemWrapperAdapter<RecyclerView.ViewHolder> mWrapperAdapter;
     private RecyclerView.ViewHolder mSwipingItem;
     private int mSwipingItemPosition = RecyclerView.NO_POSITION;
     private long mSwipingItemId = RecyclerView.NO_ID;
@@ -141,13 +141,13 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
             throw new IllegalArgumentException("The passed adapter does not support stable IDs");
         }
 
-        if (mAdapter != null) {
+        if (mWrapperAdapter != null) {
             throw new IllegalStateException("already have a wrapped adapter");
         }
 
-        mAdapter = new SwipeableItemWrapperAdapter(this, adapter);
+        mWrapperAdapter = new SwipeableItemWrapperAdapter(this, adapter);
 
-        return mAdapter;
+        return mWrapperAdapter;
     }
 
     /**
@@ -176,10 +176,6 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
             throw new IllegalStateException("RecyclerView instance has already been set");
         }
 
-        if (mAdapter == null || getSwipeableItemWrapperAdapter(rv) != mAdapter) {
-            throw new IllegalStateException("adapter is not set properly");
-        }
-
         final int layoutOrientation = CustomRecyclerViewUtils.getOrientation(rv);
         if (layoutOrientation == CustomRecyclerViewUtils.ORIENTATION_UNKNOWN) {
             throw new IllegalStateException("failed to determine layout orientation");
@@ -193,9 +189,9 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
         mTouchSlop = vc.getScaledTouchSlop();
         mMinFlingVelocity = vc.getScaledMinimumFlingVelocity();
         mMaxFlingVelocity = vc.getScaledMaximumFlingVelocity();
-        mSwipeThresholdDistance = (int) (mTouchSlop * MIN_DISTANCE_TOUCH_SLOP_MUL);
+        mSwipeThresholdDistance = mTouchSlop * MIN_DISTANCE_TOUCH_SLOP_MUL;
 
-        mItemSlideAnimator = new ItemSlidingAnimator(mAdapter);
+        mItemSlideAnimator = new ItemSlidingAnimator(mWrapperAdapter);
         mItemSlideAnimator.setImmediatelySetTranslationThreshold(
                 (int) (rv.getResources().getDisplayMetrics().density * SLIDE_ITEM_IMMEDIATELY_SET_TRANSLATION_THRESHOLD_DP + 0.5f));
 
@@ -230,7 +226,7 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
             mItemSlideAnimator = null;
         }
 
-        mAdapter = null;
+        mWrapperAdapter = null;
         mRecyclerView = null;
     }
 
@@ -271,7 +267,7 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
     }
 
     /*package*/ boolean onInterceptTouchEvent(RecyclerView rv, MotionEvent e) {
-        final int action = MotionEventCompat.getActionMasked(e);
+        final int action = e.getActionMasked();
 
         if (LOCAL_LOGV) {
             Log.v(TAG, "onInterceptTouchEvent() action = " + action);
@@ -308,7 +304,7 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
     }
 
     /*package*/ void onTouchEvent(RecyclerView rv, MotionEvent e) {
-        final int action = MotionEventCompat.getActionMasked(e);
+        final int action = e.getActionMasked();
 
         if (LOCAL_LOGV) {
             Log.v(TAG, "onTouchEvent() action = " + action);
@@ -338,20 +334,24 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
     }
 
     private boolean handleActionDown(RecyclerView rv, MotionEvent e) {
-        final RecyclerView.Adapter adapter = rv.getAdapter();
         final RecyclerView.ViewHolder holder = CustomRecyclerViewUtils.findChildViewHolderUnderWithTranslation(rv, e.getX(), e.getY());
 
         if (!(holder instanceof SwipeableItemViewHolder)) {
             return false;
         }
 
-        final int itemPosition = CustomRecyclerViewUtils.getSynchronizedPosition(holder);
+        final int wrappedItemPosition = getWrappedItemPosition(holder);
+
 
         // verify the touched item is valid state
-        if (!(itemPosition >= 0 && itemPosition < adapter.getItemCount())) {
+        if (!(wrappedItemPosition >= 0 && wrappedItemPosition < mWrapperAdapter.getItemCount())) {
             return false;
         }
-        if (holder.getItemId() != adapter.getItemId(itemPosition)) {
+
+        final long wrappedAdapterItemId = ItemIdComposer.extractWrappedIdPart(mWrapperAdapter.getItemId(wrappedItemPosition));
+        final long wrappedItemId = ItemIdComposer.extractWrappedIdPart(holder.getItemId());
+
+        if (wrappedItemId != wrappedAdapterItemId) {
             return false;
         }
 
@@ -359,12 +359,12 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
         final int touchY = (int) (e.getY() + 0.5f);
 
         final View view = holder.itemView;
-        final int translateX = (int) (ViewCompat.getTranslationX(view) + 0.5f);
-        final int translateY = (int) (ViewCompat.getTranslationY(view) + 0.5f);
+        final int translateX = (int) (view.getTranslationX() + 0.5f);
+        final int translateY = (int) (view.getTranslationY() + 0.5f);
         final int viewX = touchX - (view.getLeft() + translateX);
         final int viewY = touchY - (view.getTop() + translateY);
 
-        final int reactionType = mAdapter.getSwipeReactionType(holder, itemPosition, viewX, viewY);
+        final int reactionType = mWrapperAdapter.getSwipeReactionType(holder, wrappedItemPosition, viewX, viewY);
 
         if (reactionType == 0) {
             return false;
@@ -382,15 +382,11 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
         return true;
     }
 
-    private static SwipeableItemWrapperAdapter getSwipeableItemWrapperAdapter(RecyclerView rv) {
-        return WrapperAdapterUtils.findWrappedAdapter(rv.getAdapter(), SwipeableItemWrapperAdapter.class);
-    }
-
     private boolean handleActionUpOrCancel(MotionEvent e, boolean invokeFinish) {
         int action = MotionEvent.ACTION_CANCEL;
 
         if (e != null) {
-            action = MotionEventCompat.getActionMasked(e);
+            action = e.getActionMasked();
             mLastTouchX = (int) (e.getX() + 0.5f);
             mLastTouchY = (int) (e.getY() + 0.5f);
         }
@@ -419,30 +415,60 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
         int result = RESULT_CANCELED;
 
         if (action == MotionEvent.ACTION_UP) {
+            final float swipeThresholdDistanceCoeff = 0.8f;
+            final float swipeThresholdVelocity = mMinFlingVelocity;
+
             final boolean horizontal = mSwipeHorizontal;
-            final View itemView = mSwipingItem.itemView;
-            final int viewSize = (horizontal) ? itemView.getWidth() : itemView.getHeight();
+            final SwipeableItemViewHolder holder = (SwipeableItemViewHolder) mSwipingItem;
+            final View containerView = SwipeableViewHolderUtils.getSwipeableContainerView(holder);
+            final int containerSize = (horizontal) ? containerView.getWidth() : containerView.getHeight();
             final float distance = (horizontal) ? (mLastTouchX - mInitialTouchX) : (mLastTouchY - mInitialTouchY);
             final float absDistance = Math.abs(distance);
+            final boolean canSwipeNegativeDir = (horizontal) ? SwipeReactionUtils.canSwipeLeft(mSwipingItemReactionType) : SwipeReactionUtils.canSwipeUp(mSwipingItemReactionType);
+            final boolean canSwipePositiveDir = (horizontal) ? SwipeReactionUtils.canSwipeRight(mSwipingItemReactionType) : SwipeReactionUtils.canSwipeDown(mSwipingItemReactionType);
+            final boolean proportional = holder.isProportionalSwipeAmountModeEnabled();
+            float negativeDirLimit = (horizontal) ? holder.getMaxLeftSwipeAmount() : holder.getMaxUpSwipeAmount();
+            float positiveDirLimit = (horizontal) ? holder.getMaxRightSwipeAmount() : holder.getMaxDownSwipeAmount();
+
+            negativeDirLimit = adaptAmount(holder, horizontal, negativeDirLimit, proportional, false);
+            positiveDirLimit = adaptAmount(holder, horizontal, positiveDirLimit, proportional, false);
+
+            if (isSpecialSwipeAmountValue(negativeDirLimit)) {
+                negativeDirLimit = -containerSize;
+            }
+            if (isSpecialSwipeAmountValue(positiveDirLimit)) {
+                positiveDirLimit = containerSize;
+            }
 
             mVelocityTracker.computeCurrentVelocity(1000, mMaxFlingVelocity); // 1000: pixels per second
+
 
             final float velocity = (horizontal) ? mVelocityTracker.getXVelocity() : mVelocityTracker.getYVelocity();
             final float absVelocity = Math.abs(velocity);
 
-            if ((absDistance > mSwipeThresholdDistance) &&
-                    ((distance * velocity) > 0.0f) &&
-                    (absVelocity <= mMaxFlingVelocity) &&
-                    ((absDistance > (viewSize / 2)) || (absVelocity >= mMinFlingVelocity))) {
+            boolean swiped = false;
+            boolean positiveDir = false;
 
-                if (horizontal && (distance < 0) && SwipeReactionUtils.canSwipeLeft(mSwipingItemReactionType)) {
-                    result = RESULT_SWIPED_LEFT;
-                } else if ((!horizontal) && (distance < 0) && SwipeReactionUtils.canSwipeUp(mSwipingItemReactionType)) {
-                    result = RESULT_SWIPED_UP;
-                } else if (horizontal && (distance > 0) && SwipeReactionUtils.canSwipeRight(mSwipingItemReactionType)) {
-                    result = RESULT_SWIPED_RIGHT;
-                } else if ((!horizontal) && (distance > 0) && SwipeReactionUtils.canSwipeDown(mSwipingItemReactionType)) {
-                    result = RESULT_SWIPED_DOWN;
+            if (absDistance > mSwipeThresholdDistance) {
+                if (absVelocity >= swipeThresholdVelocity) {
+                    if ((velocity * distance) >= 0) {
+                        swiped = true;
+                        positiveDir = (velocity > 0);
+                    }
+                } else if ((distance < 0) && (distance <= negativeDirLimit * swipeThresholdDistanceCoeff)) {
+                    swiped = true;
+                    positiveDir = false;
+                } else if ((distance > 0) && (distance >= positiveDirLimit * swipeThresholdDistanceCoeff)) {
+                    swiped = true;
+                    positiveDir = true;
+                }
+            }
+
+            if (swiped) {
+                if (!positiveDir && canSwipeNegativeDir) {
+                    result = (horizontal) ? RESULT_SWIPED_LEFT : RESULT_SWIPED_UP;
+                } else if (positiveDir && canSwipePositiveDir) {
+                    result = (horizontal) ? RESULT_SWIPED_RIGHT : RESULT_SWIPED_DOWN;
                 }
             }
         }
@@ -528,13 +554,13 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
     }
 
     private boolean checkConditionAndStartSwiping(MotionEvent e, RecyclerView.ViewHolder holder) {
-        final int itemPosition = CustomRecyclerViewUtils.getSynchronizedPosition(holder);
+        final int wrappedItemPosition = getWrappedItemPosition(holder);
 
-        if (itemPosition == RecyclerView.NO_POSITION) {
+        if (wrappedItemPosition == RecyclerView.NO_POSITION) {
             return false;
         }
 
-        startSwiping(e, holder, itemPosition);
+        startSwiping(e, holder, wrappedItemPosition);
 
         return true;
     }
@@ -548,7 +574,7 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
 
         mSwipingItem = holder;
         mSwipingItemPosition = itemPosition;
-        mSwipingItemId = mAdapter.getItemId(itemPosition);
+        mSwipingItemId = mWrapperAdapter.getItemId(itemPosition);
         mLastTouchX = (int) (e.getX() + 0.5f);
         mLastTouchY = (int) (e.getY() + 0.5f);
         mTouchedItemOffsetX = mLastTouchX;
@@ -570,7 +596,7 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
         }
 
         // raise onSwipeItemStarted() event
-        mAdapter.onSwipeItemStarted(this, holder, mSwipingItemId);
+        mWrapperAdapter.onSwipeItemStarted(this, holder, itemPosition, mSwipingItemId);
     }
 
     private void finishSwiping(int result) {
@@ -612,8 +638,8 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
         final int slideDir = resultCodeToSlideDirection(result);
         SwipeResultAction resultAction = null;
 
-        if (mAdapter != null) {
-            resultAction = mAdapter.onSwipeItemFinished(swipingItem, itemPosition, result);
+        if (mWrapperAdapter != null) {
+            resultAction = mWrapperAdapter.onSwipeItemFinished(swipingItem, itemPosition, result);
         }
 
         if (resultAction == null) {
@@ -628,7 +654,7 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
         boolean slideAnimated = false;
 
         switch (afterReaction) {
-            case AFTER_SWIPE_REACTION_DEFAULT:
+            case AFTER_SWIPE_REACTION_MOVE_TO_ORIGIN:
                 slideAnimated = mItemSlideAnimator.finishSwipeSlideToDefaultPosition(
                         swipingItem, mSwipeHorizontal, true, mReturnToDefaultPositionAnimationDuration,
                         itemPosition, resultAction);
@@ -643,27 +669,27 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
 
                 final long removeAnimationDuration = (itemAnimator != null) ? itemAnimator.getRemoveDuration() : 0;
 
-                if (supportsViewPropertyAnimator()) {
-                    final long moveAnimationDuration = (itemAnimator != null) ? itemAnimator.getMoveDuration() : 0;
+                final long moveAnimationDuration = (itemAnimator != null) ? itemAnimator.getMoveDuration() : 0;
 
-                    final RemovingItemDecorator decorator = new RemovingItemDecorator(
-                            mRecyclerView, swipingItem, result, removeAnimationDuration, moveAnimationDuration);
+                final RemovingItemDecorator decorator = new RemovingItemDecorator(
+                        mRecyclerView, swipingItem, result, removeAnimationDuration, moveAnimationDuration);
 
-                    decorator.setMoveAnimationInterpolator(SwipeDismissItemAnimator.MOVE_INTERPOLATOR);
-                    decorator.start();
-                }
+                decorator.setMoveAnimationInterpolator(SwipeDismissItemAnimator.MOVE_INTERPOLATOR);
+                decorator.start();
 
                 slideAnimated = mItemSlideAnimator.finishSwipeSlideToOutsideOfWindow(
                         swipingItem, slideDir, true, removeAnimationDuration,
                         itemPosition, resultAction);
             }
             break;
+            case AFTER_SWIPE_REACTION_DO_NOTHING:
+                break;
             default:
                 throw new IllegalStateException("Unknown after reaction type: " + afterReaction);
         }
 
-        if (mAdapter != null) {
-            mAdapter.onSwipeItemFinished2(swipingItem, itemPosition, result, afterReaction, resultAction);
+        if (mWrapperAdapter != null) {
+            mWrapperAdapter.onSwipeItemFinished2(swipingItem, itemPosition, result, afterReaction, resultAction);
         }
 
         // raise onItemSwipeFinished() event
@@ -731,6 +757,73 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
         cancelSwipe(false);
     }
 
+    /**
+     * Perform fake swiping.
+     *
+     * @param holder Target ViewHolder.
+     * @param result swipe result code
+     * @return true for successful, otherwise false.
+     */
+    public boolean performFakeSwipe(RecyclerView.ViewHolder holder, int result) {
+        if (!(holder instanceof SwipeableItemViewHolder)) {
+            return false;
+        }
+
+        if (isSwiping()) {
+            return false;
+        }
+
+        switch (result) {
+            case RESULT_SWIPED_LEFT:
+            case RESULT_SWIPED_RIGHT:
+                if (!mSwipeHorizontal) {
+                    return false;
+                }
+                break;
+            case RESULT_SWIPED_UP:
+            case RESULT_SWIPED_DOWN:
+                if (mSwipeHorizontal) {
+                    return false;
+                }
+                break;
+            case RESULT_CANCELED:
+                break;
+            default:
+                return false;
+        }
+
+        final int wrappedItemPosition = getWrappedItemPosition(holder);
+
+        if (wrappedItemPosition == RecyclerView.NO_POSITION) {
+            return false;
+        }
+
+        MotionEvent fakeMotionEvent = MotionEvent.obtain(
+                SystemClock.uptimeMillis(), SystemClock.uptimeMillis(),
+                MotionEvent.ACTION_DOWN, 0, 0, 0);
+
+        startSwiping(fakeMotionEvent, holder, wrappedItemPosition);
+
+        fakeMotionEvent.recycle();
+
+        // swipe 1px to apply background
+        int direction = 0;
+        if (result == RESULT_SWIPED_LEFT || result == RESULT_SWIPED_UP) {
+            direction = -1;
+        } else if (result == RESULT_SWIPED_RIGHT || result == RESULT_SWIPED_DOWN) {
+            direction = 1;
+        }
+
+        applySlideItem(
+                holder, wrappedItemPosition,
+                0, direction,
+                false, mSwipeHorizontal, false, true);
+
+        finishSwiping(result);
+
+        return true;
+    }
+
     /*package*/ void cancelSwipe(boolean immediately) {
         handleActionUpOrCancel(null, false);
 
@@ -747,7 +840,7 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
         return (mItemSlideAnimator != null) && (mItemSlideAnimator.isRunning(item));
     }
 
-    private void slideItem(RecyclerView.ViewHolder holder, float amount, boolean horizontal, boolean shouldAnimate) {
+    private void slideItem(RecyclerView.ViewHolder holder, float amount, boolean proportionalAmount, boolean horizontal, boolean shouldAnimate) {
         if (amount == OUTSIDE_OF_THE_WINDOW_LEFT) {
             mItemSlideAnimator.slideToOutsideOfWindow(holder, ItemSlidingAnimator.DIR_LEFT, shouldAnimate, mMoveToOutsideWindowAnimationDuration);
         } else if (amount == OUTSIDE_OF_THE_WINDOW_TOP) {
@@ -759,8 +852,15 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
         } else if (amount == 0.0f) {
             mItemSlideAnimator.slideToDefaultPosition(holder, horizontal, shouldAnimate, mReturnToDefaultPositionAnimationDuration);
         } else {
-            mItemSlideAnimator.slideToSpecifiedPosition(holder, amount, horizontal);
+            mItemSlideAnimator.slideToSpecifiedPosition(holder, amount, proportionalAmount, horizontal, shouldAnimate, mMoveToSpecifiedPositionAnimationDuration);
         }
+    }
+
+    private int getWrappedItemPosition(RecyclerView.ViewHolder holder) {
+        final RecyclerView.Adapter rootAdapter = mRecyclerView.getAdapter();
+        final int rootItemPosition = CustomRecyclerViewUtils.getSynchronizedPosition(holder);
+
+        return WrapperAdapterUtils.unwrapPosition(rootAdapter, mWrapperAdapter, rootItemPosition);
     }
 
     /**
@@ -779,6 +879,25 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
      */
     public void setReturnToDefaultPositionAnimationDuration(long duration) {
         mReturnToDefaultPositionAnimationDuration = duration;
+    }
+
+
+    /**
+     * Gets the duration of the "move to specified position" animation
+     *
+     * @return Duration of the "move to specified position" animation in milliseconds
+     */
+    public long getMoveToSpecifiedPositionAnimationDuration() {
+        return mMoveToSpecifiedPositionAnimationDuration;
+    }
+
+    /**
+     * Sets the duration of the "move to specified position" animation
+     *
+     * @param duration Duration of the "move to specified position" animation in milliseconds
+     */
+    public void setMoveToSpecifiedPositionAnimationDuration(long duration) {
+        mMoveToSpecifiedPositionAnimationDuration = duration;
     }
 
     /**
@@ -824,9 +943,10 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
 
     /*package*/ void applySlideItem(
             RecyclerView.ViewHolder holder, int itemPosition,
-            float prevAmount, float amount, boolean horizontal, boolean shouldAnimate, boolean isSwiping) {
+            float prevAmount, float amount, boolean proportionalAmount,
+            boolean horizontal, boolean shouldAnimate, boolean isSwiping) {
         final SwipeableItemViewHolder holder2 = (SwipeableItemViewHolder) holder;
-        final View containerView = holder2.getSwipeableContainerView();
+        final View containerView = SwipeableViewHolderUtils.getSwipeableContainerView(holder2);
 
         if (containerView == null) {
             return;
@@ -844,20 +964,22 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
             reqBackgroundType = determineBackgroundType(amount, horizontal);
         }
 
-        if (amount == 0.0f) {
-            slideItem(holder, amount, horizontal, shouldAnimate);
-            mAdapter.onUpdateSlideAmount(holder, itemPosition, horizontal, amount, isSwiping, reqBackgroundType);
-        } else {
-            float adjustedAmount = amount;
+        float adjustedAmount = amount;
+
+        if (amount != 0.0f) {
+            boolean isLimitProportional = holder2.isProportionalSwipeAmountModeEnabled();
             float minLimit = horizontal ? holder2.getMaxLeftSwipeAmount() : holder2.getMaxUpSwipeAmount();
             float maxLimit = horizontal ? holder2.getMaxRightSwipeAmount() : holder2.getMaxDownSwipeAmount();
 
+            minLimit = adaptAmount(holder2, horizontal, minLimit, isLimitProportional, proportionalAmount);
+            maxLimit = adaptAmount(holder2, horizontal, maxLimit, isLimitProportional, proportionalAmount);
+
             adjustedAmount = Math.max(adjustedAmount, minLimit);
             adjustedAmount = Math.min(adjustedAmount, maxLimit);
-
-            mAdapter.onUpdateSlideAmount(holder, itemPosition, horizontal, amount, isSwiping, reqBackgroundType);
-            slideItem(holder, adjustedAmount, horizontal, shouldAnimate);
         }
+
+        slideItem(holder, adjustedAmount, proportionalAmount, horizontal, shouldAnimate);
+        mWrapperAdapter.onUpdateSlideAmount(holder, itemPosition, amount, proportionalAmount, horizontal, isSwiping, reqBackgroundType);
     }
 
     private static int determineBackgroundType(float amount, boolean horizontal) {
@@ -902,12 +1024,33 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
     }
 
     /*package*/ int syncSwipingItemPosition(int positionGuess) {
-        mSwipingItemPosition = getItemPosition(mAdapter, mSwipingItemId, positionGuess);
+        mSwipingItemPosition = getItemPosition(mWrapperAdapter, mSwipingItemId, positionGuess);
         return mSwipingItemPosition;
     }
 
-    private static boolean supportsViewPropertyAnimator() {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB;
+    /*package*/
+    static float adaptAmount(SwipeableItemViewHolder holder, boolean horizontal, float srcAmount, boolean isSrcProportional, boolean isDestProportional) {
+        float destAmount = srcAmount;
+
+        if ((isSrcProportional ^ isDestProportional) && (srcAmount != 0.0f) && !isSpecialSwipeAmountValue(srcAmount)) {
+            View v = SwipeableViewHolderUtils.getSwipeableContainerView(holder);
+            float d = (horizontal) ? v.getWidth() : v.getHeight();
+
+            if (isDestProportional) {
+                d = (d != 0) ? (1 / d) : 0;
+            }
+
+            destAmount *= d;
+        }
+
+        return destAmount;
+    }
+
+    private static boolean isSpecialSwipeAmountValue(float amount) {
+        return (amount == SwipeableItemConstants.OUTSIDE_OF_THE_WINDOW_LEFT) ||
+                (amount == SwipeableItemConstants.OUTSIDE_OF_THE_WINDOW_RIGHT) ||
+                (amount == SwipeableItemConstants.OUTSIDE_OF_THE_WINDOW_TOP) ||
+                (amount == SwipeableItemConstants.OUTSIDE_OF_THE_WINDOW_BOTTOM);
     }
 
     private static class InternalHandler extends Handler {
@@ -922,7 +1065,7 @@ public class RecyclerViewSwipeManager implements SwipeableItemConstants {
         }
 
         public void release() {
-            removeCallbacks(null);
+            removeCallbacksAndMessages(null);
             mHolder = null;
         }
 

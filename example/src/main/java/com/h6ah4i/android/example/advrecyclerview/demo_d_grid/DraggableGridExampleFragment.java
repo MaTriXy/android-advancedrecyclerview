@@ -36,8 +36,8 @@ import android.widget.CompoundButton;
 
 import com.h6ah4i.android.example.advrecyclerview.R;
 import com.h6ah4i.android.example.advrecyclerview.common.data.AbstractDataProvider;
+import com.h6ah4i.android.widget.advrecyclerview.animator.DraggableItemAnimator;
 import com.h6ah4i.android.widget.advrecyclerview.animator.GeneralItemAnimator;
-import com.h6ah4i.android.widget.advrecyclerview.animator.RefactoredDefaultItemAnimator;
 import com.h6ah4i.android.widget.advrecyclerview.decoration.ItemShadowDecorator;
 import com.h6ah4i.android.widget.advrecyclerview.draggable.RecyclerViewDragDropManager;
 import com.h6ah4i.android.widget.advrecyclerview.utils.WrapperAdapterUtils;
@@ -69,7 +69,7 @@ public class DraggableGridExampleFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         //noinspection ConstantConditions
-        mRecyclerView = (RecyclerView) getView().findViewById(R.id.recycler_view);
+        mRecyclerView = getView().findViewById(R.id.recycler_view);
         mLayoutManager = new GridLayoutManager(getContext(), 3, GridLayoutManager.VERTICAL, false);
 
         // drag & drop manager
@@ -81,13 +81,19 @@ public class DraggableGridExampleFragment extends Fragment {
         mRecyclerViewDragDropManager.setInitiateOnMove(false);
         mRecyclerViewDragDropManager.setLongPressTimeout(750);
 
+        // setup dragging item effects (NOTE: DraggableItemAnimator is required)
+        mRecyclerViewDragDropManager.setDragStartItemAnimationDuration(250);
+        mRecyclerViewDragDropManager.setDraggingItemAlpha(0.8f);
+        mRecyclerViewDragDropManager.setDraggingItemScale(1.3f);
+        mRecyclerViewDragDropManager.setDraggingItemRotation(15.0f);
+
         //adapter
         final DraggableGridExampleAdapter myItemAdapter = new DraggableGridExampleAdapter(getDataProvider());
         mAdapter = myItemAdapter;
 
         mWrappedAdapter = mRecyclerViewDragDropManager.createWrappedAdapter(myItemAdapter);      // wrap for dragging
 
-        final GeneralItemAnimator animator = new RefactoredDefaultItemAnimator();
+        GeneralItemAnimator animator = new DraggableItemAnimator(); // DraggableItemAnimator is required to make item animations properly.
 
         mRecyclerView.setLayoutManager(mLayoutManager);
         mRecyclerView.setAdapter(mWrappedAdapter);  // requires *wrapped* adapter
@@ -143,7 +149,7 @@ public class DraggableGridExampleFragment extends Fragment {
 
         // setting up the item move mode selection switch
         MenuItem menuSwitchItem = menu.findItem(R.id.menu_switch_swap_mode);
-        CompoundButton actionView = (CompoundButton) MenuItemCompat.getActionView(menuSwitchItem).findViewById(R.id.switch_view);
+        CompoundButton actionView = MenuItemCompat.getActionView(menuSwitchItem).findViewById(R.id.switch_view);
 
         actionView.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override

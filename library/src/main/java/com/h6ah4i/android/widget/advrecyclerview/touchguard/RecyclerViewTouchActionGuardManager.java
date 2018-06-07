@@ -17,7 +17,6 @@
 package com.h6ah4i.android.widget.advrecyclerview.touchguard;
 
 import android.support.annotation.NonNull;
-import android.support.v4.view.MotionEventCompat;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -109,7 +108,7 @@ public class RecyclerViewTouchActionGuardManager {
             return false;
         }
 
-        final int action = MotionEventCompat.getActionMasked(e);
+        final int action = e.getActionMasked();
 
         if (LOCAL_LOGV) {
             Log.v(TAG, "onInterceptTouchEvent() action = " + action);
@@ -140,7 +139,7 @@ public class RecyclerViewTouchActionGuardManager {
             return;
         }
 
-        final int action = MotionEventCompat.getActionMasked(e);
+        final int action = e.getActionMasked();
 
         if (LOCAL_LOGV) {
             Log.v(TAG, "onTouchEvent() action = " + action);
@@ -160,18 +159,13 @@ public class RecyclerViewTouchActionGuardManager {
 
             final int distance = mLastTouchY - mInitialTouchY;
 
-            if (mInterceptScrollingWhileAnimationRunning && (Math.abs(distance) > mTouchSlop) && isAnimationRunning(rv)) {
+            if (mInterceptScrollingWhileAnimationRunning && (Math.abs(distance) > mTouchSlop) && rv.isAnimating()) {
                 // intercept vertical move touch events while animation is running
                 mGuarding = true;
             }
         }
 
         return mGuarding;
-    }
-
-    private static boolean isAnimationRunning(RecyclerView rv) {
-        final RecyclerView.ItemAnimator itemAnimator = rv.getItemAnimator();
-        return (itemAnimator != null) && (itemAnimator.isRunning());
     }
 
     private void handleActionUpOrCancel() {

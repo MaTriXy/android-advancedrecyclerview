@@ -16,7 +16,8 @@
 
 package com.h6ah4i.android.example.advrecyclerview.demo_s_viewpager;
 
-import android.support.v4.view.ViewCompat;
+import android.graphics.Color;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -51,8 +52,8 @@ class ViewPagerSwipeableExampleAdapter
 
         public MyViewHolder(View v) {
             super(v);
-            mContainer = (PagerSwipeItemFrameLayout) v.findViewById(R.id.container);
-            mTextView = (TextView) v.findViewById(android.R.id.text1);
+            mContainer = v.findViewById(R.id.container);
+            mTextView = v.findViewById(android.R.id.text1);
         }
 
         @Override
@@ -63,7 +64,7 @@ class ViewPagerSwipeableExampleAdapter
         @Override
         public void onSlideAmountUpdated(float horizontalAmount, float verticalAmount, boolean isSwiping) {
             float alpha = 1.0f - Math.min(Math.max(Math.abs(horizontalAmount), 0.0f), 1.0f);
-            ViewCompat.setAlpha(mContainer, alpha);
+            mContainer.setAlpha(alpha);
         }
     }
 
@@ -106,7 +107,7 @@ class ViewPagerSwipeableExampleAdapter
     @Override
     public void onViewRecycled(MyViewHolder holder) {
         super.onViewRecycled(holder);
-        ViewCompat.setAlpha(holder.mContainer, 1.0f);
+        holder.mContainer.setAlpha(1.0f);
     }
 
     @Override
@@ -129,7 +130,17 @@ class ViewPagerSwipeableExampleAdapter
     }
 
     @Override
+    public void onSwipeItemStarted(MyViewHolder holder, int position) {
+        notifyDataSetChanged();
+    }
+
+    @Override
     public void onSetSwipeBackground(MyViewHolder holder, int position, int type) {
+        if (type == Swipeable.DRAWABLE_SWIPE_NEUTRAL_BACKGROUND) {
+            holder.itemView.setBackgroundColor(Color.TRANSPARENT);
+        } else {
+            holder.itemView.setBackgroundColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.bg_swipe_item_gray));
+        }
     }
 
     @Override

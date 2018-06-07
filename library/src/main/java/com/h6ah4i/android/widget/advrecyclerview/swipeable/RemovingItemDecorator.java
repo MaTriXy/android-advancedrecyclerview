@@ -35,7 +35,7 @@ class RemovingItemDecorator extends RecyclerView.ItemDecoration {
     private static final int NOTIFY_REMOVAL_EFFECT_PHASE_1 = 0;
     private static final int NOTIFY_REMOVAL_EFFECT_END = 1;
 
-    private static final long ADDITIONAL_REMOVE_DURATION = 0;  // workaround: to avoid the gap between the below item
+    private static final long ADDITIONAL_REMOVE_DURATION = 50;  // workaround: to avoid the gap between the below item
 
     private RecyclerView mRecyclerView;
     private RecyclerView.ViewHolder mSwipingItem;
@@ -60,8 +60,8 @@ class RemovingItemDecorator extends RecyclerView.ItemDecoration {
 
         mRemoveAnimationDuration = removeAnimationDuration + ADDITIONAL_REMOVE_DURATION;
         mMoveAnimationDuration = moveAnimationDuration;
-        mTranslationX = (int) (ViewCompat.getTranslationX(swipingItem.itemView) + 0.5f);
-        mTranslationY = (int) (ViewCompat.getTranslationY(swipingItem.itemView) + 0.5f);
+        mTranslationX = (int) (swipingItem.itemView.getTranslationX() + 0.5f);
+        mTranslationY = (int) (swipingItem.itemView.getTranslationY() + 0.5f);
 
         CustomRecyclerViewUtils.getViewBounds(mSwipingItem.itemView, mSwipingItemBounds);
     }
@@ -79,8 +79,8 @@ class RemovingItemDecorator extends RecyclerView.ItemDecoration {
         fillSwipingItemBackground(c, mSwipeBackgroundDrawable, scale);
 
         if (mSwipingItemId == mSwipingItem.getItemId()) {
-            mTranslationX = (int) (ViewCompat.getTranslationX(mSwipingItem.itemView) + 0.5f);
-            mTranslationY = (int) (ViewCompat.getTranslationY(mSwipingItem.itemView) + 0.5f);
+            mTranslationX = (int) (mSwipingItem.itemView.getTranslationX() + 0.5f);
+            mTranslationY = (int) (mSwipingItem.itemView.getTranslationY() + 0.5f);
         }
 
         if (requiresContinuousAnimationAfterSwipeCompletedSuccessfully(elapsedTime)) {
@@ -149,14 +149,14 @@ class RemovingItemDecorator extends RecyclerView.ItemDecoration {
     }
 
     public void start() {
-        final View containerView = ((SwipeableItemViewHolder) mSwipingItem).getSwipeableContainerView();
+        final View containerView = SwipeableViewHolderUtils.getSwipeableContainerView(mSwipingItem);
 
         ViewCompat.animate(containerView).cancel();
 
         mRecyclerView.addItemDecoration(this);
 
         mStartTime = System.currentTimeMillis();
-        mTranslationY = (int) (ViewCompat.getTranslationY(mSwipingItem.itemView) + 0.5f);
+        mTranslationY = (int) (mSwipingItem.itemView.getTranslationY() + 0.5f);
         mSwipeBackgroundDrawable = mSwipingItem.itemView.getBackground();
 
         postInvalidateOnAnimation();

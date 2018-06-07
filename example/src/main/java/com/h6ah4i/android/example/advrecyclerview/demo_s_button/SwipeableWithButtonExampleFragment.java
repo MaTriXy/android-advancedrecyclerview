@@ -60,7 +60,7 @@ public class SwipeableWithButtonExampleFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         //noinspection ConstantConditions
-        mRecyclerView = (RecyclerView) getView().findViewById(R.id.recycler_view);
+        mRecyclerView = getView().findViewById(R.id.recycler_view);
         mLayoutManager = new LinearLayoutManager(getContext());
 
         // touch guard manager  (this class is required to suppress scrolling while swipe-dismiss animation is running)
@@ -72,8 +72,8 @@ public class SwipeableWithButtonExampleFragment extends Fragment {
         mRecyclerViewSwipeManager = new RecyclerViewSwipeManager();
 
         //adapter
-        final SwipeableWIthButtonExampleAdapter myItemAdapter = new SwipeableWIthButtonExampleAdapter(getDataProvider());
-        myItemAdapter.setEventListener(new SwipeableWIthButtonExampleAdapter.EventListener() {
+        final SwipeableWithButtonExampleAdapter myItemAdapter = new SwipeableWithButtonExampleAdapter(getDataProvider());
+        myItemAdapter.setEventListener(new SwipeableWithButtonExampleAdapter.EventListener() {
             @Override
             public void onItemPinned(int position) {
                 ((SwipeableWithButtonExampleActivity) getActivity()).onItemPinned(position);

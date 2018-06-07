@@ -1,3 +1,126 @@
+## 0.11.0
+[Breaking changes]
+- Changed minimum SDK level to v14
+- New callbacks are added to `SwipeableItemAdapter` and `DraggableItemAdapter`
+
+[New features & improvements]
+- Bumped Support libraries to v27.0.0
+- A new callback `onItemSwipeStarted()` is added to `SwipeableItemAdapter` to reduce implicitly calls of the `notifyDataSetChanged()` method.
+
+  Migration code:
+  ```java
+  @Override
+  public void onSwipeItemStarted(MyViewHolder holder, int position) {
+      notifyDataSetChanged(); // or you can implement better invalidation code here
+  }
+  ```
+
+- New callbacks `onItemDragStarted()` and `onItemDragFinished()` are added to `DraggableItemAdapter` to reduce implicitly calls of the `notifyDataSetChanged()` method.
+
+  Migration code:
+  ```java
+  @Override
+  public void onItemDragStarted(int position) {
+      notifyDataSetChanged(); // or you can implement better invalidation code here
+  }
+
+  @Override
+  public void onItemDragFinished(int fromPosition, int toPosition, boolean result) {
+      notifyDataSetChanged(); // or you can implement better invalidation code here
+  }
+  ```
+
+## 0.10.6
+[Bug fixes]
+- Fixed some internal wrapper adapter's onViewRecycled() method is not invoked (issue #376)
+- Fixed unexpected onClick() event fired after finished dragging item (issue #378)
+
+[New features]
+- Added RecyclerViewSwipeManager.performFakeSwiping (issue #372)
+
+[Improvements]
+- Changed to preserve item scaling when starts dragging (issue #384)
+
+
+## 0.10.5
+[Bug fixes]
+- Fixed View.OVER_SCROLL_NEVER not work when dragging (issue #374)
+
+[Improvements]
+- Expose path segments for header footer adapter (PR #368, #373)
+- Updated support library to v25.3.0
+
+
+## 0.10.4
+[BREAKING CHANGE]
+- The `payload` parameter is added to `OnGroupExpandListener` and `OnGroupCollapseListener` (issue #350)
+  (commit: 353406ea43657dead1ba65207b95e9067e457f6d)
+
+[New features]
+- Added fine control of initial state of group items by
+  `ExpandableItemAdapter.getInitialGroupExpandedState()`  (issue #346)
+- Added variants of `expandGroup()`/`collapseGroup()` methods which has a `payload` parameter (issue #350)
+
+[Bug fixes]
+- Fixed NullPointerException issue (issue #358 & PR #362, thanks @polyak01 !)
+- Fix swipe amount not applied before laid out item views in proportional mode (issue #361)
+
+[Improvements]
+- Added scrolling support while dragging in NestedScrollView (issue #351)
+- Updated support library to v25.2.0
+
+
+
+## 0.10.3
+[Bug fixes]
+- Fixed IllegalStateException on touching a group item while RecyclerView is calculating layout (issue #339)
+- Fixed onBindGroupViewHolder()/onBindChildViewHolder() method with palyloads parameter not used bug
+
+[Improvements]
+- Reduce overdraws of "Button under swipeable item" (PR #331, thx. @AnirudhaAgashe)
+- Updated support library to v25.1.0
+
+
+## 0.10.2
+[Bug fixes]
+- Fixed createDraggingItemImage() method regression (issue #325)
+
+
+## 0.10.1
+[Improvements]
+- Updated support library to v25.0.1
+
+[Bug fixes]
+- Backport official DefaultItemAnimator fixes to RefactoredDefaultAnimator (issue #324)
+- Improve dragging item image bitmap creation process (issue #319)
+
+
+## 0.10.0
+[New features]
+- Introduced ComposedAdapter
+- Introduced Headers and Footers support
+- Added new demos for new adapter related features
+- Made dragging item appearance controllable (issue #193, #292)
+- Added AFTER_SWIPE_REACTION_DO_NOTHING (pull request #308)
+- Added SwipeResultActionDoNothing and SwipeResultActionMoveToOrigin
+
+[Improvements]
+- Updated support library to v25.0.0
+
+[Bug fixes]
+- Small bug fixes
+
+
+## 0.9.3
+[New features]
+- Added `RecyclerViewExpandableItemManager.setDefaultGroupsExpandedState(boolean expanded)` (issue #281)
+- Added `SwipebleItemViewHolder.setProportionalSwipeAmountModeEnabled(boolean enabled)` (issue #286)
+- Added `RecyclerViewExpandableItemManager.notifyGroupItemChanged(int groupPosition, Object payload)`
+
+[Bug fixes]
+- Fixed item sliding animation not working bug (issue #285)
+
+
 ## 0.9.2
 [New features]
 - Added `void RecyclerViewDragDropManager.setItemMoveMode(@ItemMoveMode int mode)` (issue #253, #269)

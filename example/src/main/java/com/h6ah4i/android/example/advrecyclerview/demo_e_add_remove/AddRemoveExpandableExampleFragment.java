@@ -68,7 +68,7 @@ public class AddRemoveExpandableExampleFragment
         super.onViewCreated(view, savedInstanceState);
 
         //noinspection ConstantConditions
-        mRecyclerView = (RecyclerView) getView().findViewById(R.id.recycler_view);
+        mRecyclerView = getView().findViewById(R.id.recycler_view);
         mLayoutManager = new LinearLayoutManager(getContext());
 
         final Parcelable eimSavedState = (savedInstanceState != null) ? savedInstanceState.getParcelable(SAVED_STATE_EXPANDABLE_ITEM_MANAGER) : null;
@@ -164,11 +164,11 @@ public class AddRemoveExpandableExampleFragment
     }
 
     @Override
-    public void onGroupCollapse(int groupPosition, boolean fromUser) {
+    public void onGroupCollapse(int groupPosition, boolean fromUser, Object payload) {
     }
 
     @Override
-    public void onGroupExpand(int groupPosition, boolean fromUser) {
+    public void onGroupExpand(int groupPosition, boolean fromUser, Object payload) {
         // NOTE: fromUser is false because explicitly calling the
         // RecyclerViewExpandableItemManager.expand() method in adapter
         adjustScrollPositionOnGroupExpanded(groupPosition);
